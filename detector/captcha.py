@@ -1,5 +1,4 @@
 import os
-import base64
 from twocaptcha import TwoCaptcha
 
 class CaptchaSolver:

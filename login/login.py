@@ -1,34 +1,20 @@
 import os
-import dotenv
 import base64
 import time
 from io import BytesIO
 from PIL import Image
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
 from detector.captcha import CaptchaSolver
+from utils.driver import WebDriverManager
 
 class UbotLogin:
     BASE_URL = "https://cardweb.ubot.com.tw/register_extra"
 
-    def __init__(self):
-        dotenv.load_dotenv()
+    def __init__(self, driver:WebDriverManager):
         self.sid = os.getenv("SID")
         self.birth = os.getenv("BIRTH")
-
-        # 設置 Chrome options
-        options = Options()
-        # options.add_argument("--headless")  # 無頭模式
-        options.add_argument("--disable-gpu")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--window-size=1920,1080")
-
-        # 初始化 WebDriver
-        self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        self.driver = driver
 
     def get_captcha(self):
         """獲取驗證碼並解析"""
@@ -74,18 +60,18 @@ class UbotLogin:
         captcha_input.send_keys(captcha_text)
 
         # 按 Enter 或找到登入按鈕點擊
-        captcha_input.send_keys(Keys.RETURN)
-        time.sleep(3)  # 等待登入處理
+        submit_btn = self.driver.find_element(By.ID, "btnAjaxPost")
+        submit_btn.click()
+        time.sleep(10)  # 等待登入處理
 
     def run(self):
         """執行完整流程"""
-        try:
-            captcha_text = self.get_captcha()
-            self.login(captcha_text)
-            print("🎉 成功獲取活動頁面！")
-        finally:
-            self.driver.quit()  # 關閉瀏覽器
+        captcha_text = self.get_captcha()
+        self.login(captcha_text)
+        print("🎉 成功獲取活動頁面！")
+        
 
 # **執行程式**
 if __name__ == "__main__":
-    UbotLogin().run()
+    driver = WebDriverManager.get_driver()
+    UbotLogin(driver).run()
