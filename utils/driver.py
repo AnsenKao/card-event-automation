@@ -1,15 +1,32 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
+# utils/driver.py
+from playwright.sync_api import sync_playwright, Browser, Page
 
-class WebDriverManager:
-    """負責 WebDriver 初始化的類別"""
-    @staticmethod
-    def get_driver():
-        options = Options()
-        options.add_argument("--headless")  # 無頭模式
-        options.add_argument("--disable-gpu")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--window-size=1920,1080")
-        return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+class PlaywrightDriverManager:
+    _playwright = None
+    _browser: Browser = None
+    _context = None
+    _page: Page = None
+
+    @classmethod
+    def get_driver(cls, headless: bool = False) -> Page:
+        """回傳已初始化的 Playwright Page（可重用）"""
+        if cls._page is None:
+            cls._playwright = sync_playwright().start()
+            cls._browser = cls._playwright.chromium.launch(headless=headless)
+            cls._context = cls._browser.new_context()
+            cls._page = cls._context.new_page()
+        return cls._page
+
+    @classmethod
+    def close(cls):
+        """關閉資源"""
+        if cls._context:
+            cls._context.close()
+            cls._context = None
+        if cls._browser:
+            cls._browser.close()
+            cls._browser = None
+        if cls._playwright:
+            cls._playwright.stop()
+            cls._playwright = None
+        cls._page = None

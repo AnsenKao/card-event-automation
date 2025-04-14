@@ -19,6 +19,6 @@ class CaptchaSolver:
 
 # 測試用
 if __name__ == "__main__":
-    img_path = "captcha.jpg"
-    solver = CaptchaSolver(img_path)
-    solver.decode_captcha()
+    img_path = "captcha.png"
+    solver = CaptchaSolver()
+    solver.decode_captcha(img_path)
