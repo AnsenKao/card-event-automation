@@ -11,7 +11,7 @@ def main(driver):
     login_flow.run()
 
     submit_flow = SubmitEvent(driver)
-    submit_flow.check_all_radios_and_submit()
+    submit_flow.check_all_and_submit()
 
 if __name__ == "__main__":
     driver = PlaywrightDriverManager.get_driver()
