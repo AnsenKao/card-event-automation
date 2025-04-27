@@ -5,7 +5,7 @@ from io import BytesIO
 from PIL import Image
 from dotenv import load_dotenv
 from detector.captcha import CaptchaSolver
-from playwright.sync_api import Page
+from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
 
 load_dotenv()
 
@@ -50,8 +50,22 @@ class UbotLogin:
 
         self.page.click("#btnAjaxPost")
 
+    def check_captcha_error(self):
+        try:
+            self.page.wait_for_selector("text=驗證碼錯誤", timeout=3000)
+            return True
+        except PlaywrightTimeoutError:
+            return False
 
     def run(self):
-        captcha = self.get_captcha()
-        self.login(captcha)
-        print("🎉 成功獲取活動頁面！")
+        max_retries = 3
+        for attempt in range(max_retries):
+            captcha = self.get_captcha()
+            self.login(captcha)
+
+            if self.check_captcha_error():
+                print(f"❌ 第 {attempt+1} 次驗證碼錯誤，重新嘗試...")
+                continue
+            print("🎉 成功獲取活動頁面！")
+            return
+        print("🚫 多次嘗試後仍失敗，請檢查驗證碼辨識或網站狀態。")

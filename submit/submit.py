@@ -33,7 +33,7 @@ class SubmitEvent:
             logger.error(f"第 {index+1} 個活動發生錯誤：{e}")
 
     def submit_radio_form(self):
-        self.page.wait_for_selector("input[type='radio']", timeout=5000)
+        self.page.wait_for_selector("input[type='radio']", state="attached", timeout=5000)
         radios = self.page.locator("input[type='radio']")
         count = radios.count()
 
