@@ -8,7 +8,7 @@ class PlaywrightDriverManager:
     _page: Page = None
 
     @classmethod
-    def get_driver(cls, headless: bool = False) -> Page:
+    def get_driver(cls, headless: bool = True) -> Page:
         """回傳已初始化的 Playwright Page（可重用）"""
         if cls._page is None:
             cls._playwright = sync_playwright().start()
