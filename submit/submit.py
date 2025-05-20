@@ -70,7 +70,7 @@ class SubmitEvent:
 
     def handle_modal_after_submit(self):
         try:
-            self.page.wait_for_selector("button:has-text('關閉')", timeout=10000)
+            self.page.wait_for_selector("button:has-text('關閉')", timeout=20000)
             self.page.locator("button:has-text('關閉')").click()
             self.page.locator("#ActivityList-tab").click()
         except Exception:
