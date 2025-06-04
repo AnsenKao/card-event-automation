@@ -73,6 +73,7 @@ class SubmitEvent:
             self.page.wait_for_selector("button:has-text('關閉')", timeout=20000)
             self.page.locator("button:has-text('關閉')").click()
             self.page.locator("#ActivityList-tab").click()
+            logger.info("已成功添加活動")
         except Exception:
             logger.info("未出現完整關閉按鈕，嘗試點擊 modal 的 ×")
             self.page.locator("button.close").first.click()
