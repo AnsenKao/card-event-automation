@@ -52,8 +52,15 @@ class SubmitEvent:
 
         for i in range(count):
             radio = radios.nth(i)
+            # 取得活動標題
+            try:
+                li = radio.locator("xpath=ancestor::li")
+                label_text = li.locator("label").inner_text()
+            except Exception:
+                label_text = f"Radio {i+1}"
+
             if self.click_and_submit_radio(radio, i):
-                self.handle_modal_after_submit()
+                self.handle_modal_after_submit(activity_name=label_text)
                 success_count += 1
 
         return success_count > 0
@@ -68,12 +75,15 @@ class SubmitEvent:
             logger.warning(f"第 {index+1} 個 radio 提交失敗：{e}")
         return False
 
-    def handle_modal_after_submit(self):
+    def handle_modal_after_submit(self, activity_name=None):
         try:
             self.page.wait_for_selector("button:has-text('關閉')", timeout=20000)
             self.page.locator("button:has-text('關閉')").click()
             self.page.locator("#ActivityList-tab").click()
-            logger.info("已成功添加活動")
+            if activity_name:
+                logger.info(f"已成功添加活動【{activity_name}】")
+            else:
+                logger.info("已成功添加活動")
         except Exception:
             logger.info("未出現完整關閉按鈕，嘗試點擊 modal 的 ×")
             self.page.locator("button.close").first.click()
