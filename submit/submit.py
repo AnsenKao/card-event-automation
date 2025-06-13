@@ -1,7 +1,11 @@
 import os
 import time
 from playwright.sync_api import Page
+from dotenv import load_dotenv
 from utils.log import setup_logger
+from utils.email_sender import EmailSender # Changed import
+
+load_dotenv()
 
 logger = setup_logger(__name__)
 
@@ -9,6 +13,32 @@ class SubmitEvent:
     def __init__(self, driver: Page):
         self.page = driver
         self.current_index = -1
+        # Initialize EmailSender instance
+        self.sender_email = os.getenv("SENDER_EMAIL")
+        self.smtp_server = os.getenv("SMTP_SERVER")
+        self.smtp_port_str = os.getenv("SMTP_PORT")
+        self.smtp_user = os.getenv("SMTP_USER")
+        self.smtp_password = os.getenv("SMTP_PASSWORD")
+        self.recipient_email = os.getenv("RECIPIENT_EMAIL") # Also get recipient here for checking
+
+        self.smtp_port = None
+        if self.smtp_port_str:
+            try:
+                self.smtp_port = int(self.smtp_port_str)
+            except ValueError:
+                logger.error("Invalid SMTP_PORT in .env file. Must be an integer.")
+
+        if all([self.sender_email, self.smtp_server, self.smtp_port, self.smtp_user, self.smtp_password]):
+            self.email_sender_instance = EmailSender(
+                smtp_server=self.smtp_server,
+                smtp_port=self.smtp_port,
+                smtp_user=self.smtp_user,
+                smtp_password=self.smtp_password,
+                from_email=self.sender_email
+            )
+        else:
+            self.email_sender_instance = None
+            logger.error("Email sender not initialized due to missing configuration in .env file.")
 
     def check_all_and_submit(self):
         try:
@@ -82,6 +112,19 @@ class SubmitEvent:
             self.page.locator("#ActivityList-tab").click()
             if activity_name:
                 logger.info(f"已成功添加活動【{activity_name}】")
+                # Send email notification using the EmailSender instance
+                if self.email_sender_instance and self.recipient_email:
+                    email_subject = f"活動【{activity_name}】已成功添加"
+                    email_body = f"活動【{activity_name}】已成功添加到 Ubot。"
+                    self.email_sender_instance.send_email(
+                        to_email=self.recipient_email,
+                        subject=email_subject,
+                        body=email_body
+                    )
+                elif not self.recipient_email:
+                    logger.error("Recipient email (RECIPIENT_EMAIL) is missing in .env file. Email not sent.")
+                else: # self.email_sender_instance is None
+                    logger.error("Email not sent because EmailSender was not initialized (check .env configuration).")
             else:
                 logger.info("已成功添加活動")
         except Exception:
