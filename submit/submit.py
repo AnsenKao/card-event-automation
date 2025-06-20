@@ -82,15 +82,16 @@ class SubmitEvent:
 
         for i in range(count):
             radio = radios.nth(i)
-            # 取得活動標題
             try:
                 li = radio.locator("xpath=ancestor::li")
                 label_text = li.locator("label").inner_text()
+                link = li.locator("a").get_attribute("href")
             except Exception:
                 label_text = f"Radio {i+1}"
+                link = None
 
             if self.click_and_submit_radio(radio, i):
-                self.handle_modal_after_submit(activity_name=label_text)
+                self.handle_modal_after_submit(activity_name=label_text, activity_link=link)
                 success_count += 1
 
         return success_count > 0
@@ -105,7 +106,7 @@ class SubmitEvent:
             logger.warning(f"第 {index+1} 個 radio 提交失敗：{e}")
         return False
 
-    def handle_modal_after_submit(self, activity_name=None):
+    def handle_modal_after_submit(self, activity_name=None, activity_link=None):
         try:
             self.page.wait_for_selector("button:has-text('關閉')", timeout=20000)
             self.page.locator("button:has-text('關閉')").click()
@@ -115,7 +116,10 @@ class SubmitEvent:
                 # Send email notification using the EmailSender instance
                 if self.email_sender_instance and self.recipient_email:
                     email_subject = f"活動【{activity_name}】已成功添加"
-                    email_body = f"活動【{activity_name}】已成功添加到 Ubot。"
+                    if activity_link:
+                        email_body = f"活動【{activity_name}】已成功添加到 Ubot。\n連結：{activity_link}"
+                    else:
+                        email_body = f"活動【{activity_name}】已成功添加到 Ubot。"
                     self.email_sender_instance.send_email(
                         to_email=self.recipient_email,
                         subject=email_subject,
@@ -123,7 +127,7 @@ class SubmitEvent:
                     )
                 elif not self.recipient_email:
                     logger.error("Recipient email (RECIPIENT_EMAIL) is missing in .env file. Email not sent.")
-                else: # self.email_sender_instance is None
+                else:
                     logger.error("Email not sent because EmailSender was not initialized (check .env configuration).")
             else:
                 logger.info("已成功添加活動")
