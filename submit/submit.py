@@ -27,6 +27,12 @@ class SubmitEvent:
                 self.smtp_port = int(self.smtp_port_str)
             except ValueError:
                 logger.error("Invalid SMTP_PORT in .env file. Must be an integer.")
+                self.smtp_port = 587  # 使用預設值
+        else:
+            self.smtp_port = 587  # 如果沒有設定，使用預設值
+
+        # 加入除錯訊息
+        logger.info(f"Email 設定檢查: sender={bool(self.sender_email)}, server={bool(self.smtp_server)}, port={self.smtp_port}, user={bool(self.smtp_user)}, password={bool(self.smtp_password)}")
 
         if all([self.sender_email, self.smtp_server, self.smtp_port, self.smtp_user, self.smtp_password]):
             self.email_sender_instance = EmailSender(
