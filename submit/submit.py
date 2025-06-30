@@ -71,30 +71,44 @@ class SubmitEvent:
 
     def submit_all_radios(self):
         try:
-            self.page.wait_for_selector("input[type='radio']", timeout=3000)
-        except Exception:
-            logger.warning("radio 元素未出現，跳過提交")
+            time.sleep(2)
+            
+            all_radios = self.page.locator("input[type='radio']").all()
+            logger.info(f"找到 {len(all_radios)} 個 radio 元素（包括隱藏的）")
+            
+            if not all_radios:
+                logger.warning("沒有找到任何 radio 元素")
+                return False
+                
+            success_count = 0
+            for i, radio in enumerate(all_radios):
+                try:
+                    is_enabled = radio.is_enabled()
+                    radio_id = radio.get_attribute("id")
+                    radio_value = radio.get_attribute("value")
+                    
+                    logger.info(f"Radio {i+1}: ID={radio_id}, Value={radio_value}, Enabled={is_enabled}")
+                    
+                    if is_enabled:
+                        radio.click(force=True)
+                        logger.info(f"已強制點擊 radio {i+1}")
+                        
+                        self.page.locator("#LoginAPI").click()
+                        logger.info(f"已點擊提交按鈕 for radio {i+1}")
+                        
+                        self.handle_modal_after_submit(activity_name=f"Radio {i+1} (ID: {radio_id})")
+                        success_count += 1
+                        
+                except Exception as e:
+                    if "Element is not visible" not in str(e):
+                        logger.warning(f"處理 radio {i+1} 時發生錯誤: {e}")
+                    continue
+                    
+            return success_count > 0
+            
+        except Exception as e:
+            logger.error(f"查找 radio 元素時發生錯誤: {e}")
             return False
-
-        radios = self.page.locator("input[type='radio']")
-        count = radios.count()
-        success_count = 0
-
-        for i in range(count):
-            radio = radios.nth(i)
-            try:
-                li = radio.locator("xpath=ancestor::li")
-                label_text = li.locator("label").inner_text()
-                link = li.locator("a").get_attribute("href")
-            except Exception:
-                label_text = f"Radio {i+1}"
-                link = None
-
-            if self.click_and_submit_radio(radio, i):
-                self.handle_modal_after_submit(activity_name=label_text, activity_link=link)
-                success_count += 1
-
-        return success_count > 0
 
     def click_and_submit_radio(self, radio, index: int) -> bool:
         try:
@@ -113,7 +127,6 @@ class SubmitEvent:
             self.page.locator("#ActivityList-tab").click()
             if activity_name:
                 logger.info(f"已成功添加活動【{activity_name}】")
-                # Send email notification using the EmailSender instance
                 if self.email_sender_instance and self.recipient_email:
                     email_subject = f"活動【{activity_name}】已成功添加"
                     if activity_link:
@@ -133,10 +146,18 @@ class SubmitEvent:
                 logger.info("已成功添加活動")
         except Exception:
             logger.info("未出現完整關閉按鈕，嘗試點擊 modal 的 ×")
-            self.page.locator("button.close").first.click()
+            try:
+                self.page.locator("button.close").first.click()
+            except Exception as e:
+                logger.warning(f"點擊關閉按鈕失敗: {e}")
 
-        self.page.locator(".logoBtn").nth(self.current_index).click()
-        self.page.wait_for_selector("input[type='radio']", timeout=3000)
+        # 返回到當前活動頁面
+        try:
+            self.page.locator(".logoBtn").nth(self.current_index).click()
+            self.page.wait_for_load_state("networkidle", timeout=5000)
+        except Exception as e:
+            if "Timeout" not in str(e):
+                logger.warning(f"返回當前活動頁面時發生錯誤: {e}")
 
     def capture_error(self, name: str):
         os.makedirs("screenshots", exist_ok=True)
