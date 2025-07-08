@@ -90,10 +90,19 @@ class SubmitEvent:
             for i, radio in enumerate(all_radios):
                 try:
                     is_enabled = radio.is_enabled()
-                    radio_id = radio.get_attribute("id")
-                    radio_value = radio.get_attribute("value")
+                    li_locator = radio.locator("xpath=ancestor::li[contains(@class, 'formStyle') and contains(@class, 'phoneClick')]")
+                    title = None
+                    try:
+                        title = li_locator.locator(".activeTitle").inner_text()
+                    except Exception:
+                        title = None
+                    link = None
+                    try:
+                        link = li_locator.locator(".activeCtn a").get_attribute("href")
+                    except Exception:
+                        link = None
                     
-                    logger.info(f"Radio {i+1}: ID={radio_id}, Value={radio_value}, Enabled={is_enabled}")
+                    logger.info(f"Title={title}, Link={link}")
                     
                     if is_enabled:
                         radio.click(force=True)
@@ -102,7 +111,7 @@ class SubmitEvent:
                         self.page.locator("#LoginAPI").click()
                         logger.info(f"已點擊提交按鈕 for radio {i+1}")
                         
-                        self.handle_modal_after_submit(activity_name=f"Radio {i+1} (ID: {radio_id})")
+                        self.handle_modal_after_submit(activity_name=title, activity_link=link)
                         success_count += 1
                         
                 except Exception as e:
