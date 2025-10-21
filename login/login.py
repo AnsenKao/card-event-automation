@@ -19,10 +19,10 @@ class UbotLogin:
 
     def get_captcha(self):
         self.page.goto(self.BASE_URL)
-        self.page.wait_for_selector("#imgV")
+        self.page.wait_for_selector("#verifyCanvas")
         time.sleep(2)
 
-        img_src = self.page.locator("#imgV").get_attribute("src")
+        img_src = self.page.locator("#verifyCanvas").get_attribute("src")
         if not img_src.startswith("data:image/png;base64,"):
             raise Exception("❌ 驗證碼圖片未載入，請確認網站是否有變更")
 

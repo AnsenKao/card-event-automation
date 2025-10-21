@@ -1,4 +1,5 @@
 import argparse
+import sys
 import traceback
 from login.login import UbotLogin
 from submit.submit import SubmitEvent
@@ -25,5 +26,6 @@ if __name__ == "__main__":
     except Exception as e:
         print("❌ 發生錯誤：", e)
         traceback.print_exc()
+        sys.exit(1)  # 設定非零退出碼表示失敗
     finally:
         PlaywrightDriverManager.close()
