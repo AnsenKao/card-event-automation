@@ -14,7 +14,9 @@ class SubmitEvent:
         self.page = driver
         self.current_index = -1
         
-        # 選擇器配置化
+        # 【修改 1】新增一個清單，用來收集所有成功的活動
+        self.success_activities = [] 
+
         self.selectors = {
             "main_category_btn": ".logoBtn",
             "event_container": "li.formStyle",
@@ -23,14 +25,14 @@ class SubmitEvent:
             "back_to_list_tab": "#ActivityList-tab"
         }
 
-        # Email 初始化
+        # Email 初始化 (維持不變)
         self.sender_email = os.getenv("SENDER_EMAIL")
         self.smtp_server = os.getenv("SMTP_SERVER")
         self.smtp_port_str = os.getenv("SMTP_PORT")
         self.smtp_user = os.getenv("SMTP_USER")
         self.smtp_password = os.getenv("SMTP_PASSWORD")
         self.recipient_email = os.getenv("RECIPIENT_EMAIL")
-
+        
         self.smtp_port = 587
         if self.smtp_port_str:
             try:
@@ -60,10 +62,15 @@ class SubmitEvent:
             self.capture_error("no_category_found")
             return
 
+        # 遍歷所有分類
         for i in range(total):
             self.process_single_event(i)
+        
+        # 【修改 2】全部跑完後，檢查是否有成功項目，統一寄送一封信
+        self._send_summary_email()
 
     def process_single_event(self, index: int):
+        # (維持不變)
         self.current_index = index
         try:
             self.page.locator(self.selectors["main_category_btn"]).nth(index).click()
@@ -80,15 +87,11 @@ class SubmitEvent:
             self.capture_error(f"event_{index+1}")
 
     def _find_event_rows(self):
-        """
-        智慧尋找 Rows
-        """
-        # 方法 A: 使用原本的 Class
+        # (維持不變)
         rows = self.page.locator(self.selectors["event_container"]).all()
         if rows:
             return rows
 
-        # 方法 B (備援): 使用文字特徵定位
         logger.warning("找不到標準容器 Class，嘗試使用文字特徵定位...")
         try:
             anchors = self.page.get_by_text("起：").all()
@@ -103,10 +106,10 @@ class SubmitEvent:
             return []
 
     def submit_all_radios(self):
+        # (維持不變)
         try:
             time.sleep(2)
             activity_rows = self._find_event_rows()
-            logger.info(f"找到 {len(activity_rows)} 個潛在活動區塊")
             
             if not activity_rows:
                 return False
@@ -162,9 +165,13 @@ class SubmitEvent:
             self.page.locator(self.selectors["back_to_list_tab"]).click()
             
             if activity_name:
-                self._send_notification(activity_name, activity_link)
+                logger.info(f"已收集到成功活動：{activity_name}")
+                self.success_activities.append({
+                    "name": activity_name,
+                    "link": activity_link or "無連結"
+                })
+
         except Exception:
-            # 備用關閉方案
             try:
                 self.page.locator("button.close").first.click()
             except Exception:
@@ -176,18 +183,42 @@ class SubmitEvent:
         except Exception:
             pass
 
-    def _send_notification(self, name, link):
+    def _send_summary_email(self):
+        """
+        【新增方法】彙整並發送所有成功活動的通知
+        """
         if not self.email_sender_instance or not self.recipient_email:
             return
+
+        if not self.success_activities:
+            logger.info("本次執行沒有新增任何活動，不發送郵件。")
+            return
+
+        count = len(self.success_activities)
+        subject = f"Ubot 自動登錄通知：成功新增 {count} 個活動"
         
-        body = f"活動【{name}】已成功添加到 Ubot。"
-        if link: body += f"\n連結：{link}"
+        # 製作郵件內容
+        body_lines = [f"您好，本次自動執行共成功新增 {count} 個活動：", "-" * 30]
         
-        self.email_sender_instance.send_email(
-            to_email=self.recipient_email,
-            subject=f"活動【{name}】已成功添加",
-            body=body
-        )
+        for idx, item in enumerate(self.success_activities, 1):
+            body_lines.append(f"{idx}. {item['name']}")
+            if item['link'] != "無連結":
+                body_lines.append(f"   連結: {item['link']}")
+            body_lines.append("") # 空行分隔
+            
+        body = "\n".join(body_lines)
+        
+        logger.info(f"準備發送彙整郵件，共 {count} 筆資料")
+        
+        try:
+            self.email_sender_instance.send_email(
+                to_email=self.recipient_email,
+                subject=subject,
+                body=body
+            )
+            logger.info("彙整郵件發送成功")
+        except Exception as e:
+            logger.error(f"發送彙整郵件失敗: {e}")
 
     def capture_error(self, name: str):
         os.makedirs("screenshots", exist_ok=True)
